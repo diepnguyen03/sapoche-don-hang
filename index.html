@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sapoche — Báo cáo tiến độ đơn hàng gia công</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+
+:root{
+--brand:#487BA6; --brand-dk:#3A648A; --navy:#3F4463; --navy-2:#6E7290;
+--sky:#9799BA; --sky-lt:#C9CBDE; --orange:#FEADB9; --orange-lt:#F9E1E0;
+--green:#9799BA; --red:#BC85A3; --gray:#8B8CA6; --ink:#3F4463;
+--bg:#F8F6F8; --card:#FFFFFF; --line:#EDE7EC; --line-2:#F5F1F4;
+--chip:#F9E1E0;
+--risk:#C05266; --watch:#FEADB9;
+color-scheme:light;
+box-sizing:border-box;
+padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);background:var(--bg);}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Poppins',-apple-system,'Segoe UI',sans-serif;letter-spacing:-.1px;background:var(--bg);color:var(--ink);font-size:13px;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+#app{display:flex;min-height:100vh}
+
+aside{width:250px;background:linear-gradient(180deg,#F9E1E0 0%,#F3DCE4 45%,#DDE0EC 100%);border-right:1px solid #E7DFE6;border-radius:0 18px 18px 0;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column}
+.brand{padding:18px 18px 16px;border-bottom:1px solid rgba(140,110,130,.20)}
+.brand .cust{display:flex;align-items:center;gap:11px;margin-bottom:14px}
+.brand .cust .logo img{height:56px;width:auto;display:block}
+.brand .cust .nm b{display:block;font-size:13.5px;font-weight:700;color:var(--navy);line-height:1.3;letter-spacing:.2px}
+.brand .cust .nm span{display:block;font-size:9.5px;color:#8B7E93;margin-top:3px;text-transform:uppercase;letter-spacing:.8px}
+.brand h1{font-size:14.5px;font-weight:600;color:var(--navy);letter-spacing:.3px;line-height:1.4}
+nav{padding:14px 10px}
+nav a{display:block;padding:11px 13px;margin-bottom:4px;border-radius:9px;color:#5A5273;text-decoration:none;font-size:12.5px;font-weight:500;cursor:pointer;transition:.15s;line-height:1.4}
+nav a:hover{background:rgba(255,255,255,.7);color:var(--navy)}
+nav a.active{background:var(--brand);color:#fff;font-weight:600;box-shadow:0 3px 10px rgba(72,123,166,.28)}
+nav .grp{font-size:9.5px;color:#9A8B9E;text-transform:uppercase;letter-spacing:1px;padding:14px 13px 7px;font-weight:600}
+.side-note{margin:auto 12px 14px;padding:12px;background:rgba(255,255,255,.55);border-radius:9px;font-size:10.5px;color:#6E6380;line-height:1.65}
+.side-note b{color:var(--navy)}
+
+main{flex:1;min-width:0}
+.topbar{background:#fff;border-bottom:1px solid var(--line);padding:15px 26px;position:sticky;top:0;z-index:20;border-radius:0 0 14px 14px}
+.topbar-row{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.topbar h2{font-size:20px;font-weight:600;color:var(--navy);letter-spacing:-.4px}
+.topbar .sub{font-size:11.5px;color:var(--gray);margin-top:4px}
+.filters{display:flex;gap:13px;align-items:flex-end;flex-wrap:wrap}
+.fl{display:flex;flex-direction:column;gap:5px}
+.fl.hide{display:none}
+.fl label{font-size:9.5px;font-weight:600;color:var(--gray);text-transform:uppercase;letter-spacing:.6px}
+.fl select{border:1px solid var(--line);border-radius:7px;padding:7px 11px;font-size:12px;font-family:inherit;background:#fff;color:var(--ink);min-width:150px;max-width:300px;cursor:pointer;font-weight:500}
+.fl select:focus{outline:none;border-color:var(--brand)}
+.seg{display:flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.seg button{border:0;background:#fff;padding:7px 14px;font-size:12px;font-family:inherit;font-weight:500;cursor:pointer;color:var(--gray)}
+.seg button.on{background:var(--brand);color:#fff;font-weight:600}
+
+.wrap{padding:20px 26px 44px}
+.page{display:none}.page.show{display:block}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g5{grid-template-columns:repeat(5,1fr)}
+.g6{grid-template-columns:repeat(6,1fr)}
+.mb14{margin-bottom:14px}
+
+.card{background:var(--card);border:0;border-radius:14px;padding:17px 19px;box-shadow:0 1px 2px rgba(90,75,100,.06),0 4px 14px rgba(90,75,100,.07)}
+.card h3{font-size:13.5px;font-weight:600;color:var(--navy);margin-bottom:3px;padding-left:11px;position:relative}
+.card h3:before{content:'';position:absolute;left:0;top:2px;bottom:2px;width:3px;border-radius:2px;background:var(--brand)}
+.card .cs{font-size:10.5px;color:var(--gray);margin-bottom:12px;line-height:1.55}
+.card .rd{font-size:11px;color:var(--brand);background:#EAF3FA;border-radius:6px;padding:7px 10px;margin-top:11px;line-height:1.55}
+.card .rd b{color:var(--navy-2)}
+.chd{display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap}
+.chd h3{margin:0}
+.chd .rt{margin-left:auto;font-size:10.5px;color:var(--gray);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+
+.stat{background:#fff;border:0;border-left:4px solid var(--sky-lt);border-radius:14px;padding:16px 18px 18px;display:flex;flex-direction:column;box-shadow:0 1px 2px rgba(90,75,100,.06),0 4px 14px rgba(90,75,100,.07)}
+.stat.hl{border-left-color:var(--brand)}
+.stat.rk{border-left-color:var(--risk)}
+.stat.wt{border-left-color:var(--watch)}
+.stat .lb{font-size:9.5px;color:var(--gray);font-weight:700;text-transform:uppercase;letter-spacing:.75px;line-height:1.45}
+.stat .vl{font-size:30px;font-weight:600;color:var(--navy);letter-spacing:-1px;line-height:1.1;padding:12px 0 0}
+.stat .vl small{font-size:14px;font-weight:600;color:var(--gray);letter-spacing:0}
+.stat .ft{display:flex;margin-top:auto;padding-top:11px;border-top:1px solid var(--line)}
+.stat .ft>div{flex:1;min-width:0}
+.stat .ft>div+div{border-left:1px solid var(--line);padding-left:13px;margin-left:13px}
+.stat .ft span{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.6px;color:var(--gray);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat .ft b{display:block;font-size:15px;font-weight:700;color:var(--navy);margin-top:4px;font-variant-numeric:tabular-nums;line-height:1.2}
+.stat .gap{flex:1;min-height:10px}
+
+.cw{position:relative;height:250px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:#FAF7FA;color:var(--navy-2);font-weight:700;text-align:left;padding:9px 10px;border-bottom:1.5px solid var(--line);font-size:9.5px;text-transform:uppercase;letter-spacing:.7px;white-space:nowrap}
+td{padding:10px 10px;border-bottom:1px solid var(--line-2);vertical-align:top;line-height:1.5}
+tbody tr:hover{background:#FBF8FB}
+.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tfoot td,tr.tot-row td{font-weight:700;background:#F8F5F8;color:var(--navy);border-top:2px solid var(--line);border-bottom:0}
+.pill{display:inline-block;padding:2.5px 9px;border-radius:20px;font-size:10.5px;font-weight:600;white-space:nowrap}
+.p-ok{background:#E7E8F1;color:#5F6285}
+.p-wn{background:#FDE7EB;color:#B0596C}
+.p-bd{background:#FDE2E6;color:#C05266;}
+.p-nu{background:#F0EDF1;color:#8B8CA6}
+.p-bl{background:#E7EAF2;color:#3A648A}
+.p-dn{background:#487BA6;color:#fff}
+.bar{height:6px;background:#EDF1F5;border-radius:4px;overflow:hidden;min-width:66px;margin-top:5px}
+.bar i{display:block;height:100%;border-radius:4px}
+.barl{font-size:11px;font-weight:600;font-variant-numeric:tabular-nums}
+tr.clk{cursor:pointer}
+tr.clk:hover td{background:#EFF5FA}
+tr.late td{background:#FDE7EB}
+tr.late:hover td{background:#FBDDE3}
+tr.late td:first-child{box-shadow:inset 3px 0 0 #BC85A3}
+.sm{font-size:10.5px;color:var(--gray);margin-top:3px;line-height:1.45}
+.mut{color:var(--gray)}
+.bad{color:var(--risk);font-weight:600}
+.wn{color:#B0596C;font-weight:600}
+.tbl-wrap{max-height:540px;overflow:auto;border:1px solid var(--line);border-radius:8px}
+.tbl-wrap table{font-size:11.5px}
+.tbl-wrap thead th{position:sticky;top:0;z-index:2}
+a.lnk{color:var(--brand);text-decoration:none;font-weight:600;font-size:11px;white-space:nowrap}
+a.lnk:hover{text-decoration:underline}
+.chip{display:inline-block;padding:1.5px 8px;border-radius:5px;font-size:10.5px;font-weight:600;background:var(--chip);color:var(--navy);margin:1px 2px 1px 0}
+.note{background:#FDF3EE;border:1px solid #F5D9C7;border-radius:9px;padding:11px 15px;font-size:11.5px;line-height:1.65;color:#7A4326}
+.note b{color:#5B2F16}
+.lgd{display:inline-flex;align-items:center;gap:5px}
+.lgd i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.dotc{width:9px;height:9px;border-radius:50%;display:inline-block}
+.footer{margin-top:24px;padding-top:14px;border-top:1px solid var(--line);font-size:10.5px;color:var(--gray);line-height:1.6}
+
+/* FUNNEL */
+.fn-row{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.fn-row .k{font-size:11px;color:var(--navy-2);min-width:128px;text-align:right}
+.fn-row .t{flex:1;background:#F3F0F4;border-radius:8px;height:30px;overflow:hidden}
+.fn-row .t i{display:flex;align-items:center;height:100%;border-radius:8px;padding-left:10px;font-style:normal;font-size:11.5px;font-weight:600;color:#fff;white-space:nowrap}
+
+/* FLOW MAP */
+.flow-wrap{overflow-x:auto;margin-top:8px}
+.flow-head,.flow{display:grid;grid-template-columns:240px 1fr 1fr;gap:84px;min-width:920px}
+.flow-head{padding:6px 4px 8px}
+.flow-head div{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.75px;color:var(--gray)}
+.flow{position:relative;padding:0 4px 6px;align-items:start}
+.flow svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;overflow:visible}
+.fcol{display:flex;flex-direction:column;gap:11px;position:relative;z-index:1}
+.fc{background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px 13px;cursor:pointer;transition:border-color .15s,box-shadow .15s;box-shadow:0 1px 2px rgba(90,75,100,.05)}
+.fc:hover{border-color:var(--sky)}
+.fc.sel{border-color:var(--brand);box-shadow:0 0 0 3px rgba(72,123,166,.18)}
+.fc.order{border-left:4px solid var(--brand);cursor:default;background:linear-gradient(180deg,#FFFFFF 0%,#FBF8FB 100%)}
+.fc.ghost{border-style:dashed;background:#FBF9FB;cursor:default;box-shadow:none}
+.fc.ghost.bd{border-color:#E7A3B3;background:#FFF7F8}
+.fc-top{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.fc-code{font-weight:600;font-size:13px;color:var(--navy)}
+.fc-meta{font-size:10.5px;color:var(--gray);margin-top:3px;line-height:1.55}
+.fc-row{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px;align-items:center}
+
+/* BASE-LIKE FORM */
+.info6{display:grid;grid-template-columns:repeat(6,1fr);gap:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:10px}
+.info6>div{padding:11px 14px;border-right:1px solid var(--line)}
+.info6>div:last-child{border-right:0}
+.info6 .l{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--gray);margin-bottom:4px}
+.info6 .v{font-size:12.5px;font-weight:600;color:var(--navy)}
+.bf-title{font-size:13px;color:var(--navy);margin:16px 0 8px;font-weight:500}
+.bf-title span{color:var(--gray);margin-right:6px;font-weight:400}
+td.key,th.key{background:#EAF3FA!important;color:var(--brand-dk)}
+td.key{font-weight:700}
+td.q{color:var(--brand);text-align:right;font-variant-numeric:tabular-nums;font-weight:500}
+
+@media(max-width:1400px){.g6{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:1280px){.g3,.g2{grid-template-columns:1fr}.g5{grid-template-columns:repeat(3,1fr)}.info6{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:820px){
+  #app{flex-direction:column}
+  aside{width:100%;height:auto;position:static;border-radius:0 0 18px 18px}
+  nav{display:flex;flex-wrap:wrap;gap:4px}nav .grp,.side-note{display:none}nav a{margin:0}
+  .topbar{position:static;padding:14px 16px}.wrap{padding:14px 14px 36px}
+  .g6,.g5{grid-template-columns:repeat(2,1fr)}.info6{grid-template-columns:repeat(2,1fr)}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+.g5{grid-template-columns:repeat(5,1fr)}
+.stat .vl{font-size:32px}
+.srch{border:1px solid var(--line);border-radius:7px;padding:7px 11px;font-size:12px;font-family:inherit;min-width:220px;color:var(--ink)}
+.srch:focus{outline:none;border-color:var(--brand)}
+.legend-rule{display:flex;gap:14px;flex-wrap:wrap;font-size:10.5px;color:var(--gray);margin:2px 0 12px}
+.legend-rule b{color:var(--navy);font-weight:600}
+.cleg{display:flex;gap:12px;font-size:10.5px;color:var(--gray);margin-top:8px;flex-wrap:wrap}
+.cleg i{width:12px;height:10px;border-radius:3px;display:inline-block;margin-right:4px;vertical-align:-1px}
+.two{display:flex;flex-direction:column;gap:2px;min-width:96px}
+#tO th{white-space:normal;line-height:1.35;vertical-align:bottom}
+#tO td{vertical-align:middle}
+#tO th.num{min-width:54px}
+#tO th,#tO td{padding-left:7px;padding-right:7px}
+#tO .two{min-width:68px}
+#tO{font-size:11.5px}
+#tO th.num{min-width:46px}
+th{text-align:center!important;vertical-align:middle!important}
+.pill.s1{background:#F0EDF1;color:#7E7F99}
+.pill.s2{background:#FFF1D6;color:#9A6A12}
+.pill.s3{background:#FDE7EB;color:#B0596C}
+.pill.s4{background:#EFE6F7;color:#7A4FA0}
+.pill.s5{background:#DFF1F4;color:#24727F}
+.pill.s6{background:#FFE6D8;color:#B4572A}
+td.redv{color:#C05266;font-weight:700}
+.pill.p-done{background:#D6E6F5;color:#2F6A9A}
+.pill.p-grn{background:#DDF2E6;color:#1F8A5B}
+td.odh{background:#FDE2E6!important;color:#C05266;font-weight:700}
+#tO td,#tM td,#tS td{vertical-align:middle}
+table.map td{padding:7px 10px}
+table.map th{white-space:normal;line-height:1.35;vertical-align:bottom}
+table.map td.grp{vertical-align:top}
+/* mapping */
+table.map td{vertical-align:middle}
+table.map td.grp{background:#FCFAFC;border-right:1px solid var(--line)}
+table.map tr.ostart td{border-top:2px solid var(--line)}
+table.map td.gcc{border-left:1px solid var(--line-2)}
+/* sheet */
+.sheet{border:1px solid var(--line);border-radius:8px;overflow:auto;max-height:620px}
+table.sh{font-size:11px;border-collapse:separate;border-spacing:0}
+table.sh th{position:sticky;top:0;z-index:2;background:#F9E1E0;color:var(--navy);text-align:center;white-space:normal;line-height:1.3;padding:8px 8px;border-right:1px solid #EFD6D8}
+table.sh td{padding:5px 8px;border-bottom:1px solid var(--line-2);border-right:1px solid var(--line-2);white-space:nowrap;line-height:1.4;vertical-align:middle}
+table.sh td.c{text-align:center}
+table.sh td.h{text-align:center;font-weight:700;color:var(--navy)}
+table.sh td.od{text-align:center;font-weight:500;color:var(--navy)}
+table.sh tr.yr td{background:#fff;color:var(--risk);font-weight:700;font-size:15px;text-align:left;padding:8px 10px;position:sticky;top:34px}
+.tabsbar{display:flex;gap:2px;border-top:1px solid var(--line);margin-top:10px;padding-top:8px;flex-wrap:wrap}
+.tabsbar button{border:0;background:transparent;padding:7px 14px;font-family:inherit;font-size:12px;color:var(--gray);cursor:pointer;border-radius:7px 7px 0 0;border-bottom:2px solid transparent}
+.tabsbar button.on{color:var(--brand);font-weight:600;border-bottom-color:var(--brand);background:#EAF3FA}
+.tabsbar button .n{font-size:10px;color:var(--gray);margin-left:4px}
+@media(max-width:1280px){.g5{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:820px){.g5{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div id="app">
+<aside>
+<div class="brand">
+<div class="cust">
+<div class="logo"><img src="data:image/png;base64,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" alt="Sapoche"></div>
+<div class="nm"><b>Sapoche</b><span>Sản xuất mi giả</span></div>
+</div>
+<h1>TIẾN ĐỘ ĐƠN HÀNG GIA CÔNG</h1>
+</div>
+<nav>
+<div class="grp">Báo cáo</div>
+<a data-p="p1" class="active" tabindex="0">Tổng quan</a>
+<a data-p="p2" tabindex="0">Đơn hàng chi tiết</a>
+<a data-p="p3" tabindex="0">Theo dõi đơn hàng tổng thể</a>
+</nav>
+<div class="side-note"><b>Chuỗi theo dõi:</b> Đơn hàng gốc → Đơn hàng nội bộ → Đơn hàng gia công → Nhận hàng / nhập kho.</div>
+</aside>
+
+<main>
+<div class="topbar">
+<div class="topbar-row">
+<div><h2 id="ttl">Tổng quan</h2><div class="sub" id="sub"></div></div>
+<div class="filters">
+<div class="fl"><label>Năm (ngày tạo đơn)</label><select id="fY"></select></div>
+<div class="fl"><label>Khách hàng</label><select id="fK"></select></div>
+<div class="fl hide" id="wQ"><label>Tìm kiếm</label><input class="srch" id="fQ" placeholder="mã đơn gốc, mã NB, mã GC…"></div>
+</div>
+</div>
+</div>
+<div class="wrap">
+
+<!-- ===== P1 TỔNG QUAN ===== -->
+<section class="page show" id="p1">
+<div class="grid g5 mb14" id="kpi"></div>
+<div class="grid g3 mb14">
+<div class="card"><h3>Đơn hàng gốc theo bước</h3><div class="cs">QT2 · Mở đơn hàng</div><div class="cw"><canvas id="c1"></canvas></div></div>
+<div class="card"><h3>Đơn hàng nội bộ theo bước</h3><div class="cs">QT 2.2 · Đơn hàng nội bộ</div><div class="cw"><canvas id="c2"></canvas></div></div>
+<div class="card"><h3>Đơn hàng gia công theo bước</h3><div class="cs">QT3 · Đơn hàng gia công và QT4 · Nhận, nhập kho hàng gia công</div><div class="cw"><canvas id="c3"></canvas></div>
+<div class="cleg"><span><i style="background:#9799BA"></i>QT3 Đơn hàng gia công</span><span><i style="background:#487BA6"></i>QT4 Nhận hàng / nhập kho</span></div></div>
+</div>
+<div class="card">
+<h3>Tiến độ theo đơn hàng gốc</h3>
+<div class="cs">Click một đơn để xem chi tiết mapping</div>
+<div class="legend-rule">
+<span><b>Trạng thái</b> so sánh % dây đã nhận về với % thời gian đã qua (từ ngày tạo đến hạn giao):</span>
+<span>${''}</span>
+</div>
+<div class="tbl-wrap"><table id="tO"></table></div>
+</div>
+</section>
+
+<!-- ===== P2 CHI TIẾT ===== -->
+<section class="page" id="p2">
+<div class="card">
+<h3>Mapping đơn hàng gốc → nội bộ → gia công</h3>
+<div class="cs">Mỗi dòng là một đơn hàng nội bộ · click mã đơn để mở ticket trên Base</div>
+<div class="tbl-wrap" style="max-height:680px"><table class="map" id="tM"></table></div>
+</div>
+</section>
+
+<!-- ===== P3 TỔNG THỂ ===== -->
+<section class="page" id="p3">
+<div class="card">
+<h3>Theo dõi đơn hàng nội bộ và gia công</h3>
+<div class="cs">Dùng để theo dõi đơn hàng gia công và đơn hàng nội bộ · mỗi dòng là một đơn sản xuất (mã H)</div>
+<div class="tbl-wrap" style="max-height:680px"><table id="tS"></table></div>
+</div>
+</section>
+
+<div class="footer">
+Sapoche — báo cáo tiến độ đơn hàng gia công. Ngày chốt số liệu 02.10.2026. Dữ liệu demo giả lập theo cấu trúc Base.<br>
+Nguồn: Base Service — QT2 Mở đơn hàng, QT 2.2 Đơn hàng nội bộ, QT3 Đơn hàng gia công, QT4 Nhận, đổi trả hàng gia công.
+</div>
+</div>
+</main>
+</div>
+
+<script>
+// ══════════ HELPERS
+const TODAY=new Date(2026,9,2);
+const tk=id=>`https://service.base.vn/services/tickets/${id}`;
+const pd=s=>{const [d,m,y]=s.split('/').map(Number);return new Date(y,m-1,d);};
+const ds=d=>`${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+const addD=(s,n)=>{const d=pd(s);d.setDate(d.getDate()+n);return ds(d);};
+const f=n=>Math.round(n).toLocaleString('vi-VN');
+const sum=a=>a.reduce((x,y)=>x+y,0);
+const pct=(a,b)=>b?Math.round(a/b*100):0;
+const pill=(t,c)=>`<span class="pill ${c}">${t}</span>`;
+const tl=(id,txt)=>`<a class="lnk" href="${tk(id)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${txt}</a>`;
+const bar=(p,c)=>`<span class="barl" style="color:${c==='#FEADB9'?'#B0596C':c}">${p}%</span><div class="bar"><i style="width:${Math.min(p,100)}%;background:${c}"></i></div>`;
+let seed=7;const rnd=()=>{seed=(seed*16807)%2147483647;return (seed-1)/2147483646;};
+const pick=a=>a[Math.floor(rnd()*a.length)];
+
+// ══════════ QUY TRÌNH
+const ST_O=['Tạo đơn hàng','Xử lý đơn hàng','Tính dây theo định mức','Check label với KH','Xác nhận tách đơn','QT Đơn hàng nội bộ','Kết thúc dịch vụ'];
+const ST_N=['Tạo đơn hàng','Chờ gia công','Đã chuyển gia công'];
+const ST_G3=['Khởi tạo đơn hàng','Liên hệ nhà gia công'];
+const ST_G4=['Nhận hàng','Theo dõi trả hàng','Nhập kho','Hoàn thành'];
+const ST_G=[...ST_G3,...ST_G4];
+
+// ══════════ DỮ LIỆU DEMO
+// mỗi đơn gốc: số NB, kế hoạch gom GC [nhà GC, số NB, bước, % đã nhận, ngày chuyển GC, hạn hoàn thành], các NB còn lại ở bước nb
+const SPEC=[
+ {kh:'K43',no:'#07',y:2025,name:'L&C 28 lines',created:'20/12/2025',due:'15/02/2026',step:6,nb:12,gc:[['X6',4,'Hoàn thành',1,'10/01/2026','30/01/2026'],['X6',4,'Hoàn thành',1,'10/01/2026','02/02/2026'],['X48',4,'Hoàn thành',1,'12/01/2026','05/02/2026']]},
+ {kh:'K3',no:'#13ST',y:2025,name:'Chia bản lớn',created:'28/12/2025',due:'20/02/2026',step:6,nb:8,gc:[['X6',4,'Hoàn thành',1,'09/01/2026','01/02/2026'],['X6',4,'Hoàn thành',1,'09/01/2026','05/02/2026']]},
+ {kh:'K88',no:'#01',y:2025,name:'Keo giấy',created:'05/12/2025',due:'30/01/2026',step:6,nb:2,gc:[['X32',2,'Hoàn thành',1,'10/01/2026','25/01/2026']]},
+ {kh:'K6',no:'#05',y:2026,name:'P1 mã gấp',created:'02/01/2026',due:'25/01/2026',step:6,nb:1,gc:[['X6',1,'Hoàn thành',1,'06/01/2026','20/01/2026']]},
+ {kh:'K43',no:'#12',y:2026,name:'Prizmatic',created:'10/06/2026',due:'20/08/2026',step:6,nb:8,gc:[['X6',3,'Hoàn thành',1,'15/06/2026','20/07/2026'],['X48',3,'Theo dõi trả hàng',.6,'18/06/2026','30/07/2026']],rest:'Chờ gia công'},
+ {kh:'K1-BB',no:'#031',y:2026,name:'Color AS',created:'25/07/2026',due:'30/09/2026',step:6,nb:5,gc:[['X6',3,'Hoàn thành',1,'01/08/2026','05/09/2026'],['X48',2,'Nhập kho',.95,'05/08/2026','10/09/2026']]},
+ {kh:'K1-BB',no:'#029',y:2026,name:'Brown',created:'15/08/2026',due:'20/10/2026',step:6,nb:10,gc:[['X6',4,'Nhận hàng',.35,'25/08/2026','25/09/2026'],['X6',3,'Liên hệ nhà gia công',0,'28/09/2026','15/10/2026']],rest:'Chờ gia công'},
+ {kh:'K128',no:'#05',y:2026,name:'Black Ver WL',created:'20/08/2026',due:'25/10/2026',step:6,nb:5,gc:[['X32',3,'Nhập kho',.9,'25/08/2026','20/09/2026'],['X6',2,'Khởi tạo đơn hàng',0,'30/09/2026','20/10/2026']]},
+ {kh:'K3',no:'#21',y:2026,name:'Lash Fanatic',created:'01/09/2026',due:'05/10/2026',step:6,nb:6,gc:[['X6',2,'Nhận hàng',.5,'05/09/2026','25/09/2026']],rest:'Chờ gia công'},
+ {kh:'K88',no:'#04',y:2026,name:'Luxmora',created:'10/09/2026',due:'30/11/2026',step:5,nb:4,gc:[],rest:['Chờ gia công','Chờ gia công','Tạo đơn hàng','Tạo đơn hàng']},
+ {kh:'K6',no:'#09',y:2026,name:'Black type NC',created:'22/09/2026',due:'20/11/2026',step:4,nb:0,gc:[],est:9600},
+ {kh:'K43',no:'#15',y:2026,name:'Viya',created:'28/09/2026',due:'15/12/2026',step:1,nb:0,gc:[],est:14400},
+];
+const TOC=['Brown JT-9#','DB2014','Đen ngọn ngắn','BC ss','Black-Blue B','Kashtan','SMOKY GREY','Tóc trộn Mix No.6'];
+const DAY=['0.07','0.07','0.10','0.05','0.12'];
+const CONG=['C','CC','D','L','M','C,CC','L,M','CC,D'];
+const KEO=['KCD-K61','KCD-K61','KT','KT-PV1','KN-PV5'];
+const CL={X6:['Lùa gõ thường','Lùa gõ thường','TP - chia ver3 bản lớn','Keo giấy'],X48:['Lùa gạt'],X32:['Lùa gõ thường','Keo giấy']};
+const NOTE=['','','','','','Gấp','KH đổi SL','Chia 2 đợt',''];
+
+const ORDERS=[],NBS=[],GCS=[];
+let hSeq={},tkO=807200,tkN=811400,tkG=818800,gSeq={};
+SPEC.forEach((s,oi)=>{
+  const o={oi,id:`${s.kh} - ${s.no} - ${s.y} - ${s.name}`,kh:s.kh,year:+s.created.slice(-4),created:s.created,due:s.due,step:ST_O[s.step],ticket:tkO+=37,nbs:[],gcs:[]};
+  ORDERS.push(o);
+  let k=0;
+  const mk=(step,unit)=>{
+    const vp=addD(s.created,3+Math.floor(k/4));const yr=pd(vp).getFullYear();hSeq[yr]=(hSeq[yr]||0)+1;
+    const n={o:oi,h:hSeq[yr]+'H',ticket:tkN+=13,vp,unit:unit||pick(['X6','X6','X48','X32']),type:rnd()<.62?'hàng mix':'hàng đơn',
+      day:Math.round(rnd()*120+6)*40,toc:`${pick(TOC)}/${pick(DAY)}/${pick(CONG)}`,keo:pick(KEO),note:pick(NOTE),step,gc:null};
+    n.cl=pick(CL[n.unit]);NBS.push(n);o.nbs.push(n);k++;return n;};
+  s.gc.forEach(g=>{
+    const items=[];for(let i=0;i<g[1];i++)items.push(mk('Đã chuyển gia công',g[0]));
+    const key=g[0]+g[4];gSeq[key]=(gSeq[key]||0)+1;
+    const gc={code:`${g[0]}-${g[4].slice(0,2)}${g[4].slice(3,5)}-${String(gSeq[key]).padStart(2,'0')}`,ncc:g[0],ticket:tkG+=29,o:oi,step:g[2],sent:g[4],hen:g[5],nbs:items};
+    items.forEach(n=>{n.gc=gc;n.got=g[2]==='Hoàn thành'?n.day:Math.round(n.day*g[3]*(0.8+rnd()*0.4)/40)*40;n.got=Math.min(n.got,n.day);});
+    gc.sl=sum(items.map(n=>n.day));gc.got=sum(items.map(n=>n.got));
+    GCS.push(gc);o.gcs.push(gc);
+  });
+  const rest=s.nb-k;for(let i=0;i<rest;i++)mk(Array.isArray(s.rest)?s.rest[i]:s.rest);
+  o.dGoc=o.nbs.length?sum(o.nbs.map(n=>n.day)):s.est;
+});
+
+[...NBS].sort((a,b)=>pd(a.vp)-pd(b.vp)||a.ticket-b.ticket).reduce((c,n)=>{const y=pd(n.vp).getFullYear();c[y]=(c[y]||0)+1;n.h=c[y]+'H';return c;},{});
+// ══════════ CHỈ SỐ ĐƠN GỐC
+function calcOrder(o){
+  o.dGot=sum(o.nbs.map(n=>n.got||0));
+  o.pDay=pct(o.dGot,o.dGoc);
+  const span=pd(o.due)-pd(o.created);o.pTime=Math.max(0,Math.round((TODAY-pd(o.created))/span*100));
+  o.nbNoGC=o.nbs.filter(n=>!n.gc).length;
+  o.gcOpen=o.gcs.filter(g=>g.step!=='Hoàn thành').length;
+  const gap=o.pTime-o.pDay;
+  o.st=o.pDay>=100?['Hoàn thành','p-done','#487BA6']:TODAY>pd(o.due)?['Trễ hạn','p-bd','#C05266']:gap>=25?['Chậm tiến độ','p-bd','#C05266']:gap>=10?['Cần theo dõi','p-wn','#FEADB9']:['Đúng tiến độ','p-grn','#3FA06E'];
+}
+ORDERS.forEach(calcOrder);
+const COLORS=['#F9E1E0','#E7EAF2','#FDE7EB','#E9EEF7','#F3E8F0','#EAF3FA','#EFEAF6','#FFF1E3','#E8F1EE','#F6E6EC','#E4E7F2','#FBEFE6'];
+
+// ══════════ FILTER
+const F={y:'all',k:'all',q:'',tab:'all'};
+const vis=()=>ORDERS.filter(o=>(F.y==='all'||o.year===+F.y)&&(F.k==='all'||o.kh===F.k));
+const gStep=g=>g.step;
+const STEPC={'Tạo đơn hàng':'s1','Xử lý đơn hàng':'s2','Tính dây theo định mức':'s3','Check label với KH':'s4','Xác nhận tách đơn':'s5','QT Đơn hàng nội bộ':'s6','Kết thúc dịch vụ':'p-done',
+  'Khởi tạo đơn hàng':'s1','Liên hệ nhà gia công':'s2','Nhận hàng':'s4','Theo dõi trả hàng':'s3','Nhập kho':'s5','Hoàn thành':'p-done'};
+const gcPill=g=>{if(!g)return pill('Chưa chuyển gia công','p-nu');return pill(g.step,STEPC[g.step]);};
+
+// ══════════ P1
+const charts={};
+function mk(id,cfg){if(typeof Chart==='undefined')return;if(charts[id])charts[id].destroy();charts[id]=new Chart(document.getElementById(id),cfg);}
+function barCfg(labels,data,colors){
+  return {type:'bar',data:{labels,datasets:[{data,backgroundColor:colors,borderRadius:6,maxBarThickness:22}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.raw} đơn`}}},
+    scales:{x:{grid:{color:'#EFEAEF',drawTicks:false},border:{display:false},beginAtZero:true,ticks:{precision:0,padding:4}},y:{grid:{display:false},ticks:{font:{size:10.5}}}}}};
+}
+function stat(lb,vl,unit,ft,cls){return `<div class="stat ${cls||''}"><div class="lb">${lb}</div><div class="vl">${vl} <small>${unit}</small></div></div>`;}
+function renderP1(){
+  const os=vis(),ns=os.flatMap(o=>o.nbs),gs=os.flatMap(o=>o.gcs);
+  const wait=ns.filter(n=>!n.gc),done=gs.filter(g=>g.step==='Hoàn thành');
+  document.getElementById('kpi').innerHTML=[
+    stat('Đơn hàng gốc',os.length,'đơn',[['Đã tách NB',os.filter(o=>o.nbs.length).length],['Chưa tách',os.filter(o=>!o.nbs.length).length]],'hl'),
+    stat('Đơn hàng nội bộ',ns.length,'đơn',[['Đã chuyển GC',ns.filter(n=>n.gc).length],['Tổng dây',f(sum(ns.map(n=>n.day)))]]),
+    stat('Đơn hàng gia công',gs.length,'đơn',[['Đang ở QT3',gs.filter(g=>ST_G3.includes(g.step)).length],['Đang ở QT4',gs.filter(g=>ST_G4.includes(g.step)&&g.step!=='Hoàn thành').length]]),
+    stat('Đơn chờ gia công',wait.length,'đơn',[['Chờ gia công',wait.filter(n=>n.step==='Chờ gia công').length],['Mới tạo',wait.filter(n=>n.step==='Tạo đơn hàng').length]],wait.length?'wt':''),
+    stat('Đơn GC đã nhập kho',done.length,'đơn',[['Tỷ lệ',pct(done.length,gs.length)+'%'],['Dây nhập kho',f(sum(done.map(g=>g.got)))]],'hl'),
+  ].join('');
+  if(typeof Chart!=='undefined'){Chart.defaults.font.family="'Poppins',-apple-system,'Segoe UI',sans-serif";Chart.defaults.color='#8B8CA6';Chart.defaults.font.size=10.5;}
+  mk('c1',barCfg(ST_O,ST_O.map(s=>os.filter(o=>o.step===s).length),ST_O.map((s,i)=>i===ST_O.length-1?'#487BA6':'#C9CBDE')));
+  mk('c2',barCfg(ST_N,ST_N.map(s=>ns.filter(n=>n.step===s).length),['#C9CBDE','#FEADB9','#487BA6']));
+  mk('c3',barCfg(ST_G,ST_G.map(s=>gs.filter(g=>g.step===s).length),ST_G.map(s=>ST_G3.includes(s)?'#9799BA':'#487BA6')));
+
+  document.querySelector('#p1 .legend-rule').innerHTML=`<span>Trạng thái so sánh <b>% dây đã nhận về</b> với <b>% thời gian đã qua</b> (ngày tạo → hạn giao):</span>
+    <span>${pill('Đúng tiến độ','p-grn')} chênh &lt; 10 điểm</span><span>${pill('Cần theo dõi','p-wn')} chênh 10–24</span><span>${pill('Chậm tiến độ','p-bd')} chênh ≥ 25</span><span>${pill('Trễ hạn','p-bd')} quá hạn, chưa đủ dây</span><span>${pill('Hoàn thành','p-done')} đủ 100% dây</span>`;
+  const rk={'Trễ hạn':0,'Chậm tiến độ':1,'Cần theo dõi':2,'Đúng tiến độ':3,'Hoàn thành':4};
+  const sorted=[...os].sort((a,b)=>rk[a.st[0]]-rk[b.st[0]]||pd(a.due)-pd(b.due));
+  document.getElementById('tO').innerHTML=`<thead><tr><th>Đơn hàng gốc</th><th>KH</th><th>Ngày tạo</th><th>Hạn giao</th><th>Bước QT2</th><th class="num">Đơn<br>nội bộ</th><th class="num">NB chưa<br>gia công</th><th class="num">Đơn<br>gia công</th><th class="num">GC chưa<br>hoàn thành</th><th class="num">Dây<br>đơn gốc</th><th>% dây<br>hoàn thành</th><th>% thời gian<br>đã qua</th><th class="num">Số ngày<br>quá hạn</th><th>Trạng thái</th></tr></thead><tbody>`+
+  sorted.map(o=>{const od=Math.round((TODAY-pd(o.due))/864e5);
+    return `<tr class="clk" onclick="openOrder(${o.oi})"><td style="white-space:nowrap"><b>${tl(o.ticket,o.id)}</b></td><td style="white-space:nowrap">${o.kh}</td><td style="white-space:nowrap">${o.created}</td><td style="white-space:nowrap">${o.due}</td><td>${pill(o.step,STEPC[o.step])}</td>
+    <td class="num">${o.nbs.length}</td><td class="num ${o.nbNoGC>0?'redv':''}">${o.nbNoGC}</td><td class="num">${o.gcs.length}</td><td class="num ${o.gcOpen>0?'redv':''}">${o.gcOpen}</td><td class="num">${f(o.dGoc)}</td>
+    <td><div class="two">${bar(o.pDay,o.st[2])}</div></td><td><div class="two">${bar(Math.min(o.pTime,100),'#9799BA')}</div></td>
+    <td class="num ${od>=0&&o.st[0]!=='Hoàn thành'?'odh':''}">${o.st[0]==='Hoàn thành'?'—':od}</td><td>${pill(o.st[0],o.st[1])}</td></tr>`;}).join('')+'</tbody>';
+}
+
+// ══════════ P2 MAPPING
+function renderP2(){
+  const q=F.q.trim().toLowerCase();
+  let os=[...vis()].sort((a,b)=>pd(b.created)-pd(a.created));
+  const rows=[];
+  os.forEach(o=>{
+    const ns=[...o.nbs].sort((a,b)=>(a.gc?GCS.indexOf(a.gc):999)-(b.gc?GCS.indexOf(b.gc):999));
+    if(!ns.length){rows.push({o,n:null,g:null});return;}
+    ns.forEach(n=>rows.push({o,n,g:n.gc}));
+  });
+  const R=q?rows.filter(r=>[r.o.id,r.n?r.n.h:'',r.g?r.g.code:''].join(' ').toLowerCase().includes(q)):rows;
+  const stG=r=>!r.n?pill('Chưa tách đơn','p-nu'):!r.g?pill('Chưa chuyển gia công','p-nu'):gcPill(r.g);
+  document.getElementById('tM').innerHTML=`<thead><tr><th>Đơn hàng gốc</th><th class="num">SL dây<br>ĐH gốc</th><th>Đơn hàng<br>nội bộ</th><th class="num">SL dây<br>ĐH nội bộ</th><th>Đơn hàng<br>gia công</th><th class="num">SL dây<br>ĐH gia công</th><th>Ngày chuyển<br>gia công</th><th>Hạn<br>hoàn thành</th><th class="num">SL dây<br>nhập kho</th><th>Trạng thái</th></tr></thead><tbody>`+
+  (R.length?R.map(r=>`<tr><td style="white-space:nowrap">${tl(r.o.ticket,r.o.id)}</td><td class="num">${f(r.o.dGoc)}</td>
+    <td>${r.n?tl(r.n.ticket,r.n.h):'0'}</td><td class="num">${r.n?f(r.n.day):0}</td>
+    <td style="white-space:nowrap">${r.g?tl(r.g.ticket,r.g.code):'0'}</td><td class="num">${r.g?f(r.n.day):0}</td>
+    <td>${r.g?r.g.sent:'—'}</td><td class="${r.g&&!['Hoàn thành','Nhập kho'].includes(r.g.step)&&TODAY>pd(r.g.hen)?'odh':''}">${r.g?r.g.hen:'—'}</td><td class="num">${r.g&&r.g.step!=='Theo dõi trả hàng'?f(r.n.got||0):0}</td><td>${stG(r)}</td></tr>`).join('')
+  :`<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--gray)">Không có đơn nào khớp bộ lọc. Đổi năm, khách hàng hoặc xóa từ khóa tìm kiếm.</td></tr>`)+'</tbody>';
+}
+
+// ══════════ P3 TỔNG THỂ
+function renderP3(){
+  const q=F.q.trim().toLowerCase();
+  let ns=vis().flatMap(o=>o.nbs);
+  if(q) ns=ns.filter(n=>[n.h,n.toc,ORDERS[n.o].id].join(' ').toLowerCase().includes(q));
+  ns.sort((a,b)=>pd(a.vp)-pd(b.vp)||parseInt(a.h)-parseInt(b.h));
+  document.getElementById('tS').innerHTML=`<thead><tr><th>Ngày VP gửi ĐH</th><th>Hàng đơn hay mix</th><th>Gia công</th><th>Chất lượng</th><th>Đơn sản CB+HT</th><th class="num">Số dây</th><th>Loại tóc</th><th>Loại keo</th><th>Đơn hàng</th></tr></thead><tbody>`+
+  (ns.length?ns.map(n=>{const o=ORDERS[n.o];return `<tr><td style="white-space:nowrap">${n.vp.replace(/\//g,'.')}</td><td>${n.type}</td><td>${n.unit}</td><td>${n.cl}</td><td>${tl(n.ticket,n.h)}</td><td class="num">${f(n.day)}</td><td style="white-space:nowrap">${n.toc}</td><td>${n.keo}</td><td style="white-space:nowrap">${tl(o.ticket,o.id)}</td></tr>`;}).join('')
+  :`<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--gray)">Không có đơn nội bộ nào khớp bộ lọc.</td></tr>`)+'</tbody>';
+}
+
+// ══════════ NAV + FILTER
+const META={p1:['Tổng quan','Đơn hàng gốc → nội bộ → gia công → nhập kho · cập nhật 02/10/2026'],
+  p2:['Đơn hàng chi tiết','Mapping và link giữa đơn gốc, đơn nội bộ và đơn gia công'],
+  p3:['Theo dõi đơn hàng tổng thể','Theo dõi đơn hàng dây các X · dùng để theo dõi đơn hàng gia công và đơn hàng nội bộ']};
+let cur='p1';
+function render(){if(cur==='p1')renderP1();if(cur==='p2')renderP2();if(cur==='p3')renderP3();}
+function go(p){cur=p;
+  document.querySelectorAll('.page').forEach(s=>s.classList.toggle('show',s.id===p));
+  document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('active',a.dataset.p===p));
+  document.getElementById('ttl').textContent=META[p][0];document.getElementById('sub').textContent=META[p][1];
+  document.getElementById('wQ').classList.toggle('hide',p==='p1');
+  render();window.scrollTo(0,0);}
+function openOrder(oi){F.q=ORDERS[oi].id;document.getElementById('fQ').value=F.q;go('p2');}
+document.querySelectorAll('nav a').forEach(a=>{a.onclick=()=>go(a.dataset.p);a.onkeydown=e=>{if(e.key==='Enter')a.click();};});
+const years=[...new Set(ORDERS.map(o=>o.year))].sort();
+document.getElementById('fY').innerHTML='<option value="all">Tất cả</option>'+years.map(y=>`<option>${y}</option>`).join('');
+document.getElementById('fK').innerHTML='<option value="all">Tất cả khách hàng</option>'+[...new Set(ORDERS.map(o=>o.kh))].sort().map(k=>`<option>${k}</option>`).join('');
+document.getElementById('fY').onchange=e=>{F.y=e.target.value;render();};
+document.getElementById('fK').onchange=e=>{F.k=e.target.value;render();};
+document.getElementById('fQ').oninput=e=>{F.q=e.target.value;render();};
+go('p1');
+</script>
+</body>
+</html>
